@@ -1,165 +1,551 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SAKO Speed Racer</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        :root { --main-blue: #2481cc; --main-red: #ff3232; }
-        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: white; font-family: sans-serif; touch-action: none; }
-        canvas { display: block; margin: 0 auto; background: #282828; }
-        
-        /* واجهة الأزرار داخل اللعبة */
-        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .hud { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; pointer-events: none; font-weight: bold; font-size: 18px; text-shadow: 2px 2px 4px #000; }
-        
-        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: auto; }
-        .ctrl-btn { width: 45%; height: 80px; background: rgba(36, 129, 204, 0.4); border: 2px solid var(--main-blue); border-radius: 15px; color: white; font-size: 30px; display: flex; align-items: center; justify-content: center; user-select: none; }
-        .ctrl-btn:active { background: rgba(36, 129, 204, 0.8); }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Speed Racer - سباق السيارات</title>
 
-        /* شاشات القائمة */
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; pointer-events: auto; }
-        .menu-btn { width: 80%; padding: 15px; margin: 10px; background: var(--main-blue); border: none; border-radius: 10px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
-        .menu-btn.green { background: #28a745; }
-        h1 { color: var(--main-blue); margin-bottom: 30px; }
-    </style>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Cairo:wght@400;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#000;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;font-family:'Orbitron',monospace;}
+  #gameWrapper{position:relative;width:100%;height:100vh;max-width:500px;margin:0 auto;}
+  canvas{display:block;width:100%;height:100%;}
+  #ui{position:absolute;top:0;left:0;width:100%;pointer-events:none;}
+  #score{position:absolute;top:12px;left:12px;color:#fff;font-size:clamp(12px,3vw,18px);font-family:'Orbitron';text-shadow:0 0 10px #00f7ff;}
+  #best{position:absolute;top:12px;right:12px;color:#ffd700;font-size:clamp(12px,3vw,18px);font-family:'Orbitron';text-shadow:0 0 10px #ffd700;}
+  #statusBar{position:absolute;top:40px;left:0;width:100%;text-align:center;font-size:clamp(10px,2.5vw,14px);font-family:'Orbitron';pointer-events:none;}
+  #overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);backdrop-filter:blur(4px);}
+  .overlay-title{font-family:'Orbitron';font-size:clamp(28px,8vw,56px);font-weight:900;letter-spacing:4px;margin-bottom:16px;}
+  .overlay-sub{font-family:'Cairo';font-size:clamp(14px,4vw,22px);color:#aaa;margin-bottom:8px;}
+  .overlay-score{font-family:'Orbitron';font-size:clamp(18px,5vw,32px);color:#fff;margin:12px 0;}
+  .btn{font-family:'Orbitron';font-size:clamp(14px,3.5vw,20px);padding:14px 40px;border:2px solid;border-radius:4px;cursor:pointer;margin:8px;letter-spacing:2px;transition:all .2s;background:transparent;}
+  .btn-play{color:#00f7ff;border-color:#00f7ff;box-shadow:0 0 20px #00f7ff44;}
+  .btn-play:hover,.btn-play:active{background:#00f7ff22;}
+  #touchLeft,#touchRight{position:absolute;bottom:0;width:50%;height:25%;opacity:.01;cursor:pointer;}
+  #touchLeft{left:0;}
+  #touchRight{right:0;}
+  #controls{position:absolute;bottom:12px;left:0;width:100%;display:flex;justify-content:space-between;padding:0 16px;pointer-events:none;}
+  .ctrl-hint{font-family:'Orbitron';font-size:clamp(9px,2vw,12px);color:#333;}
+  .ctrl-hint.active{color:#00f7ff;text-shadow:0 0 8px #00f7ff;}
+  #pauseBtn{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:transparent;border:1px solid #333;color:#555;font-family:'Orbitron';font-size:11px;padding:4px 12px;cursor:pointer;pointer-events:all;border-radius:2px;}
+  #pauseBtn:hover{border-color:#00f7ff;color:#00f7ff;}
+</style>
 </head>
 <body>
+<div id="gameWrapper">
+  <canvas id="c"></canvas>
 
-    <div id="game-ui">
-        <div class="hud">
-            <div>النقاط: <span id="current-score">0</span></div>
-            <div style="color: #ffcc00;">الأفضل: <span id="best-score">0</span></div>
-        </div>
-    </div>
+  <div id="ui">
+    <div id="score">SCORE: <span id="sc">0</span></div>
+    <div id="best">BEST: <span id="bs">0</span></div>
+    <button id="pauseBtn">⏸ PAUSE</button>
+    <div id="statusBar"></div>
+  </div>
 
-    <div id="start-screen" class="overlay">
-        <h1>SAKO RACER</h1>
-        <button class="menu-btn green" onclick="startGame()">▶️ بدء اللعب</button>
-        <p>المطور: @Sllssllb</p>
-    </div>
+  <div id="overlay">
+    <div class="overlay-title" style="color:#00f7ff;text-shadow:0 0 30px #00f7ff">SPEED RACER</div>
+    <div class="overlay-sub" style="font-size:clamp(16px,5vw,26px);color:#fff;margin-bottom:4px;">سباق السيارات</div>
+    <div class="overlay-sub">تجنب السيارات المعادية 🚗</div>
+    <div class="overlay-sub">اجمع قوى التعزيز ⚡🛡⭐</div>
+    <div class="overlay-sub" style="margin-top:8px;color:#555;">اضغط يسار / يمين للتحرك</div>
+    <button class="btn btn-play" id="startBtn" onclick="startGame()">ابدأ اللعبة</button>
+  </div>
 
-    <div id="over-screen" class="overlay" style="display: none;">
-        <h1 style="color: var(--main-red);">GAME OVER</h1>
-        <p id="final-result" style="font-size: 22px;"></p>
-        <button class="menu-btn green" onclick="startGame()">🔄 محاولة أخرى</button>
-        <button class="menu-btn" onclick="sendToBot()">💾 حفظ وإرسال النتيجة</button>
-    </div>
+  <div id="touchLeft"></div>
+  <div id="touchRight"></div>
 
-    <canvas id="gameCanvas"></canvas>
+  <div id="controls">
+    <div class="ctrl-hint" id="hintL">← يسار</div>
+    <div class="ctrl-hint" id="hintR">يمين →</div>
+  </div>
+</div>
 
-    <div id="controls">
-        <div class="ctrl-btn" id="leftBtn">⬅️</div>
-        <div class="ctrl-btn" id="rightBtn">➡️</div>
-    </div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const wrapper = document.getElementById('gameWrapper');
+const overlay = document.getElementById('overlay');
+const scEl = document.getElementById('sc');
+const bsEl = document.getElementById('bs');
+const statusBar = document.getElementById('statusBar');
+const hintL = document.getElementById('hintL');
+const hintR = document.getElementById('hintR');
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
+let W, H, roadX, roadW, carW, carH, powerSize;
+let gameState = 'menu'; // menu, playing, paused, gameover
+let score=0, highScore=0, frame=0;
+let enemies=[], powerups=[], particles=[];
+let player, enemyTimer=0, powerupTimer=0;
+let speedBoost=0, shieldActive=false, shieldTimer=0;
+let movingLeft=false, movingRight=false;
+let animId;
 
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        
-        canvas.width = Math.min(window.innerWidth, 450);
-        canvas.height = window.innerHeight;
+// Load high score
+try{ highScore = parseInt(localStorage.getItem('srHigh')||'0'); } catch(e){}
+bsEl.textContent = highScore;
 
-        let score = 0;
-        let highScore = localStorage.getItem("sako_high_score") || 0;
-        document.getElementById("best-score").innerText = highScore;
+function resize(){
+  const rect = wrapper.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = W; canvas.height = H;
+  roadW = W * 0.85;
+  roadX = W * 0.075;
+  carW = W * 0.12;
+  carH = carW * 1.6;
+  powerSize = W * 0.08;
+  if(player){ player.x = Math.max(roadX+4, Math.min(roadX+roadW-carW-4, player.x)); }
+}
+window.addEventListener('resize', ()=>{ resize(); });
+resize();
 
-        let gameActive = false;
-        let speed = 6;
-        let player = { x: canvas.width / 2 - 25, y: canvas.height - 150, w: 50, h: 85 };
-        let enemies = [];
-        let roadOffset = 0;
+// ======== PARTICLE ========
+function mkParticle(x, y, color){
+  return { x, y, color,
+    size: 2+Math.random()*4,
+    life: 30, maxLife: 30,
+    vx: (Math.random()-0.5)*4,
+    vy: (Math.random()-0.5)*4
+  };
+}
+function addExplosion(x, y, color, n=15){
+  for(let i=0;i<n;i++) particles.push(mkParticle(x,y,color));
+}
 
-        function startGame() {
-            score = 0;
-            speed = 6;
-            enemies = [];
-            gameActive = true;
-            player.x = canvas.width / 2 - 25;
-            document.getElementById("start-screen").style.display = "none";
-            document.getElementById("over-screen").style.display = "none";
-            update();
-        }
+// ======== CAR DRAWING ========
+function drawCar(x, y, w, h, color, isPlayer){
+  const r = w * 0.15;
+  // Body
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = isPlayer ? 20 : 10;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
 
-        function drawPlayer() {
-            ctx.fillStyle = "#2481cc"; // لون سيارتك
-            ctx.shadowBlur = 10; ctx.shadowColor = "#2481cc";
-            ctx.fillRect(player.x, player.y, player.w, player.h);
-            ctx.shadowBlur = 0;
-            // الزجاج
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(player.x+5, player.y+10, player.w-10, 20);
-        }
+  // Windshield
+  const glW = w*0.3, glH = h*0.22;
+  ctx.fillStyle = isPlayer ? '#00e8ff88' : '#00000088';
+  ctx.beginPath();
+  ctx.roundRect(x+w*0.1, y+h*0.08, glW, glH, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(x+w*0.6, y+h*0.08, glW, glH, 3);
+  ctx.fill();
 
-        function update() {
-            if (!gameActive) return;
+  // Headlights
+  ctx.fillStyle = isPlayer ? '#ffffff' : '#ff4444';
+  ctx.beginPath();
+  ctx.arc(x+w*0.22, y+(isPlayer?h*0.04:h*0.96), w*0.08, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x+w*0.78, y+(isPlayer?h*0.04:h*0.96), w*0.08, 0, Math.PI*2);
+  ctx.fill();
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // رسم الطريق المتحرك
-            roadOffset = (roadOffset + speed) % 100;
-            ctx.strokeStyle = "#555"; ctx.setLineDash([40, 60]);
-            ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+  // Wheels
+  ctx.fillStyle = '#111';
+  const wr = w*0.1;
+  [[x-wr*0.5,y+h*0.2],[x+w-wr*0.5,y+h*0.2],[x-wr*0.5,y+h*0.75],[x+w-wr*0.5,y+h*0.75]].forEach(([wx,wy])=>{
+    ctx.beginPath();
+    ctx.ellipse(wx+wr*0.5, wy, wr*0.7, wr, 0, 0, Math.PI*2);
+    ctx.fill();
+  });
 
-            drawPlayer();
+  // Stripe / racing line
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(x+w*0.45, y+h*0.02, w*0.1, h*0.96);
 
-            // تحريك الأعداء
-            if (Math.random() < 0.03) {
-                enemies.push({ x: Math.random() * (canvas.width - 50), y: -100, w: 50, h: 80, color: "#ff3232" });
-            }
+  // Shield glow
+  if(isPlayer && shieldActive){
+    ctx.save();
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.ellipse(x+w/2, y+h/2, w*0.7, h*0.6, 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
 
-            enemies.forEach((en, index) => {
-                en.y += speed;
-                ctx.fillStyle = en.color;
-                ctx.fillRect(en.x, en.y, en.w, en.h);
+function drawPowerup(p){
+  const cx = p.x + powerSize/2, cy = p.y + powerSize/2;
+  const sc = 1 + Math.sin(frame*0.08)*0.12;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(sc, sc);
+  ctx.rotate(frame*0.04);
 
-                // كشف التصادم
-                if (player.x < en.x + en.w && player.x + player.w > en.x && player.y < en.y + en.h && player.y + player.h > en.y) {
-                    endGame();
-                }
+  if(p.type==='speed'){
+    ctx.fillStyle = '#00ff7f';
+    ctx.shadowColor='#00ff7f'; ctx.shadowBlur=15;
+    ctx.beginPath();
+    for(let i=0;i<3;i++){
+      const a = (i/3)*Math.PI*2 - Math.PI/2;
+      ctx.lineTo(Math.cos(a)*powerSize*0.5, Math.sin(a)*powerSize*0.5);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`bold ${powerSize*0.4}px Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⚡', 0, 1);
+  } else if(p.type==='shield'){
+    ctx.fillStyle = '#ffd700';
+    ctx.shadowColor='#ffd700'; ctx.shadowBlur=15;
+    ctx.beginPath();
+    ctx.arc(0,0,powerSize*0.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#000'; ctx.font=`bold ${powerSize*0.4}px Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🛡', 0, 1);
+  } else {
+    ctx.fillStyle = '#cc44ff';
+    ctx.shadowColor='#cc44ff'; ctx.shadowBlur=15;
+    const pts=10;
+    ctx.beginPath();
+    for(let i=0;i<pts;i++){
+      const a = (i/pts)*Math.PI*2 - Math.PI/2;
+      const r = i%2===0 ? powerSize*0.5 : powerSize*0.25;
+      ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font=`${powerSize*0.35}px Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('⭐', 0, 1);
+  }
+  ctx.restore();
+}
 
-                if (en.y > canvas.height) {
-                    enemies.splice(index, 1);
-                    score += 10;
-                    document.getElementById("current-score").innerText = score;
-                    if(score % 100 === 0) speed += 0.5;
-                }
-            });
+// ======== ROAD ========
+let roadOffset=0;
+function drawRoad(){
+  ctx.fillStyle='#080808';
+  ctx.fillRect(0,0,W,H);
 
-            requestAnimationFrame(update);
-        }
+  // Road surface
+  ctx.fillStyle='#1a1a1a';
+  ctx.fillRect(roadX, 0, roadW, H);
 
-        function endGame() {
-            gameActive = false;
-            if (score > highScore) {
-                highScore = score;
-                localStorage.setItem("sako_high_score", highScore);
-                document.getElementById("best-score").innerText = highScore;
-            }
-            document.getElementById("final-result").innerText = "النقاط: " + score;
-            document.getElementById("over-screen").style.display = "flex";
-            tg.HapticFeedback.notificationOccurred('warning');
-        }
+  // Road borders
+  ctx.fillStyle='#f5f5f5';
+  ctx.fillRect(roadX-2, 0, 3, H);
+  ctx.fillRect(roadX+roadW, 0, 3, H);
 
-        // تحكم الأزرار
-        let moveLeft = false, moveRight = false;
-        document.getElementById("leftBtn").ontouchstart = () => moveLeft = true;
-        document.getElementById("leftBtn").ontouchend = () => moveLeft = false;
-        document.getElementById("rightBtn").ontouchstart = () => moveRight = true;
-        document.getElementById("rightBtn").ontouchend = () => moveRight = false;
+  // Center dashes
+  roadOffset = (roadOffset + 4) % (H*0.15);
+  const dashH = H*0.08, dashGap = H*0.07;
+  ctx.fillStyle='rgba(200,200,200,0.35)';
+  for(let y=-dashH; y<H+dashH; y+=dashH+dashGap){
+    const dy = (y + roadOffset) % (H + dashH*2) - dashH;
+    ctx.fillRect(W/2-1.5, dy, 3, dashH);
+  }
 
-        setInterval(() => {
-            if (moveLeft && player.x > 0) player.x -= 8;
-            if (moveRight && player.x < canvas.width - player.w) player.x += 8;
-        }, 1000/60);
+  // Grass / side decoration
+  ctx.fillStyle='#0d1f0d';
+  ctx.fillRect(0,0,roadX,H);
+  ctx.fillRect(roadX+roadW+3,0,W-(roadX+roadW+3),H);
 
-        function sendToBot() {
-            tg.sendData("SCORE:" + score);
-        }
-    </script>
+  // Side markings
+  for(let y=-30; y<H+30; y+=60){
+    const dy = (y + roadOffset*1.5) % (H+60) - 30;
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    ctx.fillRect(0, dy, roadX, 5);
+    ctx.fillRect(roadX+roadW+3, dy, W-(roadX+roadW+3), 5);
+  }
+}
+
+// ======== COLLISION ========
+function rectsOverlap(ax,ay,aw,ah, bx,by,bw,bh, pad=6){
+  return ax+pad<bx+bw && ax+aw-pad>bx && ay+pad<by+bh && ay+ah-pad>by;
+}
+
+// ======== PLAYER ========
+function makePlayer(){
+  return {
+    x: W/2 - carW/2,
+    y: H - carH - H*0.05,
+    w: carW, h: carH
+  };
+}
+
+// ======== ENEMY ========
+function spawnEnemy(){
+  const laneCount = 3;
+  const laneW = (roadW - carW - 20) / laneCount;
+  const lane = Math.floor(Math.random()*laneCount);
+  const ex = roadX + 10 + lane * laneW + (laneW-carW)/2;
+  const colors = ['#ff3333','#ff6622','#ff2266','#ee1111'];
+  const speed = H*0.006 + Math.random()*H*0.004 + (score/500)*H*0.001;
+  return { x: ex, y: -carH, w: carW, h: carH, speed,
+           color: colors[Math.floor(Math.random()*colors.length)] };
+}
+
+function spawnPowerup(){
+  const types = ['speed','shield','score'];
+  const t = types[Math.floor(Math.random()*types.length)];
+  const px = roadX + 20 + Math.random()*(roadW-powerSize-40);
+  return { x: px, y: -powerSize, type: t };
+}
+
+// ======== RESET ========
+function resetGame(){
+  score=0; enemies=[]; powerups=[]; particles=[];
+  speedBoost=0; shieldActive=false; shieldTimer=0;
+  frame=0; roadOffset=0; enemyTimer=0; powerupTimer=0;
+  movingLeft=false; movingRight=false;
+  player = makePlayer();
+  scEl.textContent='0';
+  statusBar.innerHTML='';
+}
+
+function startGame(){
+  overlay.style.display='none';
+  gameState='playing';
+  resetGame();
+  if(animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+function pauseGame(){
+  if(gameState==='playing'){ gameState='paused'; document.getElementById('pauseBtn').textContent='▶ RESUME'; }
+  else if(gameState==='paused'){ gameState='playing'; document.getElementById('pauseBtn').textContent='⏸ PAUSE'; loop(); }
+}
+document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+function gameOver(){
+  gameState='gameover';
+  addExplosion(player.x+player.w/2, player.y+player.h/2, '#ff3333', 30);
+  if(score>highScore){
+    highScore=score;
+    bsEl.textContent=highScore;
+    try{ localStorage.setItem('srHigh', highScore); }catch(e){}
+  }
+  // Show overlay
+  overlay.style.display='flex';
+  overlay.innerHTML=`
+    <div class="overlay-title" style="color:#ff3333;text-shadow:0 0 30px #ff3333">GAME OVER</div>
+    <div class="overlay-sub">انتهت اللعبة!</div>
+    <div class="overlay-score">النتيجة: ${score}</div>
+    ${score>=highScore&&score>0?'<div style="color:#ffd700;font-family:Orbitron;margin:8px;font-size:clamp(12px,3vw,16px);text-shadow:0 0 10px #ffd700">🏆 أعلى نتيجة جديدة!</div>':''}
+    <div class="overlay-score" style="font-size:clamp(13px,3.5vw,20px);color:#ffd700">أفضل: ${highScore}</div>
+    <button class="btn btn-play" onclick="startGame()" style="margin-top:20px">العب مجدداً</button>
+    <button class="btn" style="color:#888;border-color:#444" onclick="showMenu()">القائمة</button>
+  `;
+}
+
+function showMenu(){
+  gameState='menu';
+  overlay.style.display='flex';
+  overlay.innerHTML=`
+    <div class="overlay-title" style="color:#00f7ff;text-shadow:0 0 30px #00f7ff">SPEED RACER</div>
+    <div class="overlay-sub" style="font-size:clamp(16px,5vw,26px);color:#fff;margin-bottom:4px;">سباق السيارات</div>
+    <div class="overlay-sub">تجنب السيارات المعادية 🚗</div>
+    <div class="overlay-sub">اجمع قوى التعزيز ⚡🛡⭐</div>
+    <div class="overlay-sub" style="margin-top:8px;color:#555;">اضغط يسار / يمين للتحرك</div>
+    <button class="btn btn-play" onclick="startGame()">ابدأ اللعبة</button>
+  `;
+}
+
+// ======== MAIN LOOP ========
+function loop(){
+  if(gameState!=='playing'){ 
+    // Still draw for visual even when paused
+    if(gameState==='paused') drawGame();
+    return; 
+  }
+  animId = requestAnimationFrame(loop);
+  update();
+  drawGame();
+}
+
+function update(){
+  frame++;
+  const speed = W * 0.012;
+
+  // Player movement
+  let dx = 0;
+  if(movingLeft) dx = -speed;
+  if(movingRight) dx = speed;
+  if(dx!==0){
+    player.x = Math.max(roadX+4, Math.min(roadX+roadW-player.w-4, player.x+dx));
+  }
+
+  // Power-up timers
+  if(speedBoost>0){ speedBoost--; updateStatus(); }
+  if(shieldActive){ shieldTimer--; if(shieldTimer<=0){ shieldActive=false; updateStatus(); } }
+
+  // Spawn enemies
+  enemyTimer++;
+  const spawnRate = Math.max(20, 45 - score/150);
+  if(enemyTimer > spawnRate + Math.random()*20){
+    enemies.push(spawnEnemy());
+    enemyTimer=0;
+  }
+
+  // Spawn powerups
+  powerupTimer++;
+  if(powerupTimer > 120+Math.random()*80 && powerups.length<4){
+    powerups.push(spawnPowerup());
+    powerupTimer=0;
+  }
+
+  const spdMult = speedBoost>0 ? 1.6 : 1;
+
+  // Move enemies
+  for(let i=enemies.length-1;i>=0;i--){
+    enemies[i].y += enemies[i].speed * spdMult;
+    if(enemies[i].y > H+carH){ enemies.splice(i,1); score+=10; scEl.textContent=score; continue; }
+    // Collision with player
+    const e=enemies[i];
+    if(rectsOverlap(player.x,player.y,player.w,player.h, e.x,e.y,e.w,e.h)){
+      if(shieldActive){
+        addExplosion(e.x+e.w/2, e.y+e.h/2, '#ffd700', 20);
+        enemies.splice(i,1); score+=20; scEl.textContent=score;
+      } else { gameOver(); return; }
+    }
+  }
+
+  // Move powerups
+  for(let i=powerups.length-1;i>=0;i--){
+    powerups[i].y += H*0.004;
+    if(powerups[i].y > H){ powerups.splice(i,1); continue; }
+    const p=powerups[i];
+    if(rectsOverlap(player.x,player.y,player.w,player.h, p.x,p.y,powerSize,powerSize, 2)){
+      if(p.type==='speed'){ speedBoost=90; addExplosion(p.x+powerSize/2, p.y+powerSize/2,'#00ff7f',12); }
+      else if(p.type==='shield'){ shieldActive=true; shieldTimer=150; addExplosion(p.x+powerSize/2, p.y+powerSize/2,'#ffd700',12); }
+      else { score+=50; addExplosion(p.x+powerSize/2, p.y+powerSize/2,'#cc44ff',12); scEl.textContent=score; }
+      updateStatus();
+      powerups.splice(i,1);
+    }
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.life--;
+    if(p.life<=0) particles.splice(i,1);
+  }
+}
+
+function updateStatus(){
+  let s='';
+  if(speedBoost>0) s+=`<span style="color:#00ff7f;margin:0 8px">⚡ SPEED BOOST</span>`;
+  if(shieldActive) s+=`<span style="color:#ffd700;margin:0 8px">🛡 SHIELD (${shieldTimer})</span>`;
+  statusBar.innerHTML=s;
+}
+
+function drawGame(){
+  drawRoad();
+
+  // Powerups
+  powerups.forEach(p=>drawPowerup(p));
+
+  // Enemies
+  enemies.forEach(e=>drawCar(e.x, e.y, e.w, e.h, e.color, false));
+
+  // Player
+  drawCar(player.x, player.y, player.w, player.h, '#3399ff', true);
+
+  // Particles
+  particles.forEach(p=>{
+    const a = p.life/p.maxLife;
+    ctx.save();
+    ctx.globalAlpha=a;
+    ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color; ctx.shadowBlur=6;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size*a, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // Exhaust trail for player
+  if(gameState==='playing' && frame%3===0){
+    particles.push({
+      x: player.x+player.w*0.3+Math.random()*player.w*0.4,
+      y: player.y+player.h,
+      color: speedBoost>0?'#00ff7f':'#888',
+      size: 3+Math.random()*3, life:20, maxLife:20,
+      vx:(Math.random()-0.5)*1.5, vy:2+Math.random()*2
+    });
+  }
+
+  // Pause overlay
+  if(gameState==='paused'){
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff';
+    ctx.font=`bold ${W*0.12}px Orbitron`;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.shadowColor='#00f7ff'; ctx.shadowBlur=30;
+    ctx.fillText('PAUSED', W/2, H/2);
+  }
+
+  // Touch hints
+  if(gameState==='playing'){
+    hintL.className = 'ctrl-hint' + (movingLeft?' active':'');
+    hintR.className = 'ctrl-hint' + (movingRight?' active':'');
+  }
+}
+
+// ======== INPUT ========
+// Keyboard
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a') movingLeft=true;
+  if(e.key==='ArrowRight'||e.key==='d') movingRight=true;
+  if(e.key===' '||e.key==='Escape') { if(gameState==='playing'||gameState==='paused') pauseGame(); }
+  if(e.key==='Enter' && (gameState==='menu'||gameState==='gameover')) startGame();
+});
+document.addEventListener('keyup', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a') movingLeft=false;
+  if(e.key==='ArrowRight'||e.key==='d') movingRight=false;
+});
+
+// Touch / Mouse
+const tL = document.getElementById('touchLeft');
+const tR = document.getElementById('touchRight');
+
+function startL(){ movingLeft=true; movingRight=false; }
+function stopL(){ movingLeft=false; }
+function startR(){ movingRight=true; movingLeft=false; }
+function stopR(){ movingRight=false; }
+
+tL.addEventListener('mousedown', startL);
+tL.addEventListener('mouseup', stopL);
+tL.addEventListener('touchstart', e=>{ e.preventDefault(); startL(); },{passive:false});
+tL.addEventListener('touchend', e=>{ e.preventDefault(); stopL(); },{passive:false});
+
+tR.addEventListener('mousedown', startR);
+tR.addEventListener('mouseup', stopR);
+tR.addEventListener('touchstart', e=>{ e.preventDefault(); startR(); },{passive:false});
+tR.addEventListener('touchend', e=>{ e.preventDefault(); stopR(); },{passive:false});
+
+// Swipe detection on canvas
+let touchStartX=null;
+canvas.addEventListener('touchstart', e=>{
+  if(gameState!=='playing') return;
+  touchStartX = e.touches[0].clientX;
+},{passive:true});
+canvas.addEventListener('touchmove', e=>{
+  if(gameState!=='playing'||touchStartX===null) return;
+  const dx = e.touches[0].clientX - touchStartX;
+  if(dx<-10){ movingLeft=true; movingRight=false; }
+  else if(dx>10){ movingRight=true; movingLeft=false; }
+},{passive:true});
+canvas.addEventListener('touchend', ()=>{ movingLeft=false; movingRight=false; touchStartX=null; });
+
+// Initial draw
+drawGame();
+<script>
+    // إعلام تيليجرام أن التطبيق جاهز
+    window.Telegram.WebApp.ready();
+    
+    // توسيع التطبيق ليمتد على كامل الشاشة تلقائياً
+    window.Telegram.WebApp.expand();
+</script>
 </body>
 </html>
