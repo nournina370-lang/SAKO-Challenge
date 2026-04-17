@@ -540,12 +540,25 @@ canvas.addEventListener('touchend', ()=>{ movingLeft=false; movingRight=false; t
 
 // Initial draw
 drawGame();
-<script>
-    // إعلام تيليجرام أن التطبيق جاهز
-    window.Telegram.WebApp.ready();
-    
-    // توسيع التطبيق ليمتد على كامل الشاشة تلقائياً
-    window.Telegram.WebApp.expand();
+
+// إعدادات تيليجرام عند بدء التشغيل
+window.Telegram.WebApp.ready();
+window.Telegram.WebApp.expand();
+
+// ضمان عمل زر البدء عند اللمس على الموبايل
+const startBtn = document.getElementById('startBtn');
+if (startBtn) {
+    // حدث اللمس (أسرع على الهاتف)
+    startBtn.addEventListener('touchstart', function(e) {
+        e.preventDefault(); // منع المتصفح من التأخير
+        startGame();
+    }, {passive: false});
+
+    // حدث الضغط (للكمبيوتر والمتصفح)
+    startBtn.addEventListener('click', function() {
+        startGame();
+    });
+}
 </script>
 </body>
 </html>
