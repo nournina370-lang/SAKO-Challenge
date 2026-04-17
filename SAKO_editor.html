@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAKO - Coding Challenge</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            padding: 20px; 
+            background-color: var(--tg-theme-bg-color); 
+            color: var(--tg-theme-text-color); 
+        }
+        textarea { 
+            width: 100%; 
+            height: 200px; 
+            font-family: monospace; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            direction: ltr; /* اتجاه الكود من اليسار لليمين */
+        }
+        button { 
+            background-color: var(--tg-theme-button-color); 
+            color: var(--tg-theme-button-text-color); 
+            border: none; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            width: 100%; 
+            font-size: 16px; 
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h2>تحدي اليوم: دالة الجمع</h2>
+    <p>اكتب دالة بايثون باسم `add_numbers` تقوم بجمع رقمين:</p>
+    <textarea id="code-input" placeholder="def add_numbers(a, b):..."></textarea>
+    <button onclick="submitCode()">إرسال الحل</button>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand(); // لتمديد التطبيق ليملأ الشاشة
+
+        function submitCode() {
+            let code = document.getElementById("code-input").value;
+            if (code.trim() === "") {
+                tg.showAlert("الرجاء كتابة الكود أولاً!");
+                return;
+            }
+            // إرسال الكود كبيانات إلى البوت
+            tg.sendData(code);
+            tg.close(); // إغلاق النافذة بعد الإرسال بنجاح
+        }
+    </script>
+</body>
+</html>
+
