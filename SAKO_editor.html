@@ -2,57 +2,141 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAKO - Coding Challenge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SAKO Racing Game</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body { 
-            font-family: sans-serif; 
-            padding: 20px; 
-            background-color: var(--tg-theme-bg-color); 
-            color: var(--tg-theme-text-color); 
+            margin: 0; padding: 0; overflow: hidden; 
+            background-color: #1a1a1a; color: white; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; 
+            touch-action: none; /* منع التمرير العرضي */
         }
-        textarea { 
-            width: 100%; 
-            height: 200px; 
-            font-family: monospace; 
-            padding: 10px; 
-            margin-bottom: 10px; 
-            direction: ltr; /* اتجاه الكود من اليسار لليمين */
+        canvas { 
+            background-color: #333; display: block; margin: 0 auto; 
+            border-left: 3px solid #555; border-right: 3px solid #555;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
-        button { 
-            background-color: var(--tg-theme-button-color); 
-            color: var(--tg-theme-button-text-color); 
-            border: none; 
-            padding: 10px 20px; 
-            cursor: pointer; 
-            width: 100%; 
-            font-size: 16px; 
-            border-radius: 8px;
+        #controls { 
+            display: flex; justify-content: center; gap: 15px; 
+            padding: 10px; position: absolute; bottom: 20px; width: 100%; box-sizing: border-box;
         }
+        .btn { 
+            padding: 15px; font-size: 22px; font-weight: bold; border-radius: 12px; 
+            background-color: #2481cc; color: white; border: none; width: 45%; 
+            user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .btn:active { background-color: #1a5f96; transform: scale(0.95); }
+        #scoreBoard { position: absolute; top: 10px; left: 10px; font-size: 18px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; }
+        #gameOverScreen { 
+            display: none; position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); 
+            padding: 25px; border-radius: 20px; width: 85%; border: 2px solid #2481cc; z-index: 10;
+        }
+        #sendScoreBtn { background-color: #28a745; width: 100%; margin-top: 15px; font-size: 18px; padding: 12px; border-radius: 10px; border: none; color: white; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h2>تحدي اليوم: دالة الجمع</h2>
-    <p>اكتب دالة بايثون باسم `add_numbers` تقوم بجمع رقمين:</p>
-    <textarea id="code-input" placeholder="def add_numbers(a, b):..."></textarea>
-    <button onclick="submitCode()">إرسال الحل</button>
+    <div id="scoreBoard">النقاط: <span id="score">0</span></div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="controls">
+        <button class="btn" id="leftBtn">⬅️ يسار</button>
+        <button class="btn" id="rightBtn">يمين ➡️</button>
+    </div>
+
+    <div id="gameOverScreen">
+        <h2 style="color: #ff4d4d;">💥 تحطمت السيارة!</h2>
+        <p style="font-size: 20px;">سكورك: <span id="finalScore" style="color: #ffcc00; font-weight: bold;">0</span></p>
+        <button id="sendScoreBtn" onclick="sendScoreToBot()">حفظ النتيجة وإغلاق</button>
+        <button class="btn" style="width: 100%; margin-top: 10px; background-color: #666;" onclick="location.reload()">إعادة المحاولة 🔄</button>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
-        tg.expand(); // لتمديد التطبيق ليملأ الشاشة
+        tg.expand();
 
-        function submitCode() {
-            let code = document.getElementById("code-input").value;
-            if (code.trim() === "") {
-                tg.showAlert("الرجاء كتابة الكود أولاً!");
-                return;
-            }
-            // إرسال الكود كبيانات إلى البوت
-            tg.sendData(code);
-            tg.close(); // إغلاق النافذة بعد الإرسال بنجاح
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        canvas.width = Math.min(window.innerWidth, 400);
+        canvas.height = window.innerHeight * 0.75;
+
+        let score = 0;
+        let gameActive = true;
+        let speed = 5;
+        let player = { x: canvas.width / 2 - 20, y: canvas.height - 100, width: 40, height: 70 };
+        let obstacles = [];
+
+        function drawPlayer() {
+            ctx.fillStyle = "#007bff"; // لون سيارة اللاعب
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // تفاصيل السيارة
+            ctx.fillStyle = "#add8e6";
+            ctx.fillRect(player.x + 5, player.y + 10, player.width - 10, 15);
         }
+
+        function drawObstacles() {
+            ctx.fillStyle = "#dc3545"; // لون سيارات العدو
+            obstacles.forEach(obs => {
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            if (Math.random() < 0.02) {
+                obstacles.push({ x: Math.random() * (canvas.width - 40), y: -70, width: 40, height: 70 });
+            }
+
+            for (let i = 0; i < obstacles.length; i++) {
+                obstacles[i].y += speed;
+
+                if (player.x < obstacles[i].x + 40 && player.x + 40 > obstacles[i].x &&
+                    player.y < obstacles[i].y + 70 && player.y + 70 > obstacles[i].y) {
+                    gameActive = false;
+                    document.getElementById("finalScore").innerText = score;
+                    document.getElementById("gameOverScreen").style.display = "block";
+                    tg.HapticFeedback.notificationOccurred('error'); // اهتزاز عند الخسارة
+                }
+
+                if (obstacles[i].y > canvas.height) {
+                    obstacles.splice(i, 1);
+                    score += 10;
+                    document.getElementById("score").innerText = score;
+                    if (score % 100 === 0) speed += 0.5;
+                    i--;
+                }
+            }
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer();
+            drawObstacles();
+            update();
+            if (gameActive) requestAnimationFrame(gameLoop);
+        }
+
+        // تحكم اللمس
+        let movingLeft = false, movingRight = false;
+        document.getElementById("leftBtn").onpointerdown = () => movingLeft = true;
+        document.getElementById("leftBtn").onpointerup = () => movingLeft = false;
+        document.getElementById("rightBtn").onpointerdown = () => movingRight = true;
+        document.getElementById("rightBtn").onpointerup = () => movingRight = false;
+
+        setInterval(() => {
+            if (movingLeft && player.x > 5) player.x -= 7;
+            if (movingRight && player.x < canvas.width - 45) player.x += 7;
+        }, 1000/60);
+
+        function sendScoreToBot() {
+            tg.sendData("SCORE:" + score);
+        }
+
+        gameLoop();
     </script>
 </body>
 </html>
-
