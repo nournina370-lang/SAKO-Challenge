@@ -3,54 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SAKO Racing Game</title>
+    <title>SAKO Speed Racer</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            margin: 0; padding: 0; overflow: hidden; 
-            background-color: #1a1a1a; color: white; 
-            font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; 
-            touch-action: none; /* منع التمرير العرضي */
-        }
-        canvas { 
-            background-color: #333; display: block; margin: 0 auto; 
-            border-left: 3px solid #555; border-right: 3px solid #555;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-        #controls { 
-            display: flex; justify-content: center; gap: 15px; 
-            padding: 10px; position: absolute; bottom: 20px; width: 100%; box-sizing: border-box;
-        }
-        .btn { 
-            padding: 15px; font-size: 22px; font-weight: bold; border-radius: 12px; 
-            background-color: #2481cc; color: white; border: none; width: 45%; 
-            user-select: none; -webkit-tap-highlight-color: transparent;
-        }
-        .btn:active { background-color: #1a5f96; transform: scale(0.95); }
-        #scoreBoard { position: absolute; top: 10px; left: 10px; font-size: 18px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; }
-        #gameOverScreen { 
-            display: none; position: absolute; top: 50%; left: 50%; 
-            transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); 
-            padding: 25px; border-radius: 20px; width: 85%; border: 2px solid #2481cc; z-index: 10;
-        }
-        #sendScoreBtn { background-color: #28a745; width: 100%; margin-top: 15px; font-size: 18px; padding: 12px; border-radius: 10px; border: none; color: white; cursor: pointer; }
+        :root { --main-blue: #2481cc; --main-red: #ff3232; }
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #000; color: white; font-family: sans-serif; touch-action: none; }
+        canvas { display: block; margin: 0 auto; background: #282828; }
+        
+        /* واجهة الأزرار داخل اللعبة */
+        #game-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .hud { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; pointer-events: none; font-weight: bold; font-size: 18px; text-shadow: 2px 2px 4px #000; }
+        
+        #controls { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: auto; }
+        .ctrl-btn { width: 45%; height: 80px; background: rgba(36, 129, 204, 0.4); border: 2px solid var(--main-blue); border-radius: 15px; color: white; font-size: 30px; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .ctrl-btn:active { background: rgba(36, 129, 204, 0.8); }
+
+        /* شاشات القائمة */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; pointer-events: auto; }
+        .menu-btn { width: 80%; padding: 15px; margin: 10px; background: var(--main-blue); border: none; border-radius: 10px; color: white; font-size: 20px; font-weight: bold; cursor: pointer; }
+        .menu-btn.green { background: #28a745; }
+        h1 { color: var(--main-blue); margin-bottom: 30px; }
     </style>
 </head>
 <body>
-    <div id="scoreBoard">النقاط: <span id="score">0</span></div>
-    
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="controls">
-        <button class="btn" id="leftBtn">⬅️ يسار</button>
-        <button class="btn" id="rightBtn">يمين ➡️</button>
+
+    <div id="game-ui">
+        <div class="hud">
+            <div>النقاط: <span id="current-score">0</span></div>
+            <div style="color: #ffcc00;">الأفضل: <span id="best-score">0</span></div>
+        </div>
     </div>
 
-    <div id="gameOverScreen">
-        <h2 style="color: #ff4d4d;">💥 تحطمت السيارة!</h2>
-        <p style="font-size: 20px;">سكورك: <span id="finalScore" style="color: #ffcc00; font-weight: bold;">0</span></p>
-        <button id="sendScoreBtn" onclick="sendScoreToBot()">حفظ النتيجة وإغلاق</button>
-        <button class="btn" style="width: 100%; margin-top: 10px; background-color: #666;" onclick="location.reload()">إعادة المحاولة 🔄</button>
+    <div id="start-screen" class="overlay">
+        <h1>SAKO RACER</h1>
+        <button class="menu-btn green" onclick="startGame()">▶️ بدء اللعب</button>
+        <p>المطور: @Sllssllb</p>
+    </div>
+
+    <div id="over-screen" class="overlay" style="display: none;">
+        <h1 style="color: var(--main-red);">GAME OVER</h1>
+        <p id="final-result" style="font-size: 22px;"></p>
+        <button class="menu-btn green" onclick="startGame()">🔄 محاولة أخرى</button>
+        <button class="menu-btn" onclick="sendToBot()">💾 حفظ وإرسال النتيجة</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="controls">
+        <div class="ctrl-btn" id="leftBtn">⬅️</div>
+        <div class="ctrl-btn" id="rightBtn">➡️</div>
     </div>
 
     <script>
@@ -60,83 +61,105 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
-        canvas.width = Math.min(window.innerWidth, 400);
-        canvas.height = window.innerHeight * 0.75;
+        canvas.width = Math.min(window.innerWidth, 450);
+        canvas.height = window.innerHeight;
 
         let score = 0;
-        let gameActive = true;
-        let speed = 5;
-        let player = { x: canvas.width / 2 - 20, y: canvas.height - 100, width: 40, height: 70 };
-        let obstacles = [];
+        let highScore = localStorage.getItem("sako_high_score") || 0;
+        document.getElementById("best-score").innerText = highScore;
 
-        function drawPlayer() {
-            ctx.fillStyle = "#007bff"; // لون سيارة اللاعب
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-            // تفاصيل السيارة
-            ctx.fillStyle = "#add8e6";
-            ctx.fillRect(player.x + 5, player.y + 10, player.width - 10, 15);
+        let gameActive = false;
+        let speed = 6;
+        let player = { x: canvas.width / 2 - 25, y: canvas.height - 150, w: 50, h: 85 };
+        let enemies = [];
+        let roadOffset = 0;
+
+        function startGame() {
+            score = 0;
+            speed = 6;
+            enemies = [];
+            gameActive = true;
+            player.x = canvas.width / 2 - 25;
+            document.getElementById("start-screen").style.display = "none";
+            document.getElementById("over-screen").style.display = "none";
+            update();
         }
 
-        function drawObstacles() {
-            ctx.fillStyle = "#dc3545"; // لون سيارات العدو
-            obstacles.forEach(obs => {
-                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-            });
+        function drawPlayer() {
+            ctx.fillStyle = "#2481cc"; // لون سيارتك
+            ctx.shadowBlur = 10; ctx.shadowColor = "#2481cc";
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            ctx.shadowBlur = 0;
+            // الزجاج
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(player.x+5, player.y+10, player.w-10, 20);
         }
 
         function update() {
             if (!gameActive) return;
 
-            if (Math.random() < 0.02) {
-                obstacles.push({ x: Math.random() * (canvas.width - 40), y: -70, width: 40, height: 70 });
-            }
-
-            for (let i = 0; i < obstacles.length; i++) {
-                obstacles[i].y += speed;
-
-                if (player.x < obstacles[i].x + 40 && player.x + 40 > obstacles[i].x &&
-                    player.y < obstacles[i].y + 70 && player.y + 70 > obstacles[i].y) {
-                    gameActive = false;
-                    document.getElementById("finalScore").innerText = score;
-                    document.getElementById("gameOverScreen").style.display = "block";
-                    tg.HapticFeedback.notificationOccurred('error'); // اهتزاز عند الخسارة
-                }
-
-                if (obstacles[i].y > canvas.height) {
-                    obstacles.splice(i, 1);
-                    score += 10;
-                    document.getElementById("score").innerText = score;
-                    if (score % 100 === 0) speed += 0.5;
-                    i--;
-                }
-            }
-        }
-
-        function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // رسم الطريق المتحرك
+            roadOffset = (roadOffset + speed) % 100;
+            ctx.strokeStyle = "#555"; ctx.setLineDash([40, 60]);
+            ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
+
             drawPlayer();
-            drawObstacles();
-            update();
-            if (gameActive) requestAnimationFrame(gameLoop);
+
+            // تحريك الأعداء
+            if (Math.random() < 0.03) {
+                enemies.push({ x: Math.random() * (canvas.width - 50), y: -100, w: 50, h: 80, color: "#ff3232" });
+            }
+
+            enemies.forEach((en, index) => {
+                en.y += speed;
+                ctx.fillStyle = en.color;
+                ctx.fillRect(en.x, en.y, en.w, en.h);
+
+                // كشف التصادم
+                if (player.x < en.x + en.w && player.x + player.w > en.x && player.y < en.y + en.h && player.y + player.h > en.y) {
+                    endGame();
+                }
+
+                if (en.y > canvas.height) {
+                    enemies.splice(index, 1);
+                    score += 10;
+                    document.getElementById("current-score").innerText = score;
+                    if(score % 100 === 0) speed += 0.5;
+                }
+            });
+
+            requestAnimationFrame(update);
         }
 
-        // تحكم اللمس
-        let movingLeft = false, movingRight = false;
-        document.getElementById("leftBtn").onpointerdown = () => movingLeft = true;
-        document.getElementById("leftBtn").onpointerup = () => movingLeft = false;
-        document.getElementById("rightBtn").onpointerdown = () => movingRight = true;
-        document.getElementById("rightBtn").onpointerup = () => movingRight = false;
+        function endGame() {
+            gameActive = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem("sako_high_score", highScore);
+                document.getElementById("best-score").innerText = highScore;
+            }
+            document.getElementById("final-result").innerText = "النقاط: " + score;
+            document.getElementById("over-screen").style.display = "flex";
+            tg.HapticFeedback.notificationOccurred('warning');
+        }
+
+        // تحكم الأزرار
+        let moveLeft = false, moveRight = false;
+        document.getElementById("leftBtn").ontouchstart = () => moveLeft = true;
+        document.getElementById("leftBtn").ontouchend = () => moveLeft = false;
+        document.getElementById("rightBtn").ontouchstart = () => moveRight = true;
+        document.getElementById("rightBtn").ontouchend = () => moveRight = false;
 
         setInterval(() => {
-            if (movingLeft && player.x > 5) player.x -= 7;
-            if (movingRight && player.x < canvas.width - 45) player.x += 7;
+            if (moveLeft && player.x > 0) player.x -= 8;
+            if (moveRight && player.x < canvas.width - player.w) player.x += 8;
         }, 1000/60);
 
-        function sendScoreToBot() {
+        function sendToBot() {
             tg.sendData("SCORE:" + score);
         }
-
-        gameLoop();
     </script>
 </body>
 </html>
